@@ -3,136 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Piedra, Papel o Tijera - ML</title>
+    <title>Piedra, Papel o Tijera - Fijo Móvil</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #f0f2f5;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        canvas {
-            border: 2px solid #333;
-            border-radius: 4px;
-            background-color: #000;
-        }
-        #label-container {
-            margin-top: 15px;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        #label-container div {
-            margin: 5px 0;
-            padding: 5px;
-            background: #e9ecef;
-            border-radius: 4px;
-        }
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f0f2f5; margin: 0; padding: 15px; }
+        .container { max-width: 100%; width: 340px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+        button { background-color: #007bff; color: white; border: none; padding: 14px; font-size: 16px; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        canvas { border: 3px solid #333; background-color: #000; max-width: 100%; border-radius: 8px; margin-top: 15px; display: none; }
+        #status { margin: 10px 0; color: #666; font-size: 14px; font-style: italic; }
+        #label-container { margin-top: 15px; font-weight: bold; }
+        #label-container div { margin: 6px 0; padding: 10px; background: #e9ecef; border-radius: 6px; font-size: 16px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Detector de Poses: Piedra, Papel o Tijera</h2>
-    <button type="button" onclick="init()">Iniciar Cámara</button>
-    <div><canvas id="canvas"></canvas></div>
+    <h2>Detector de Poses (Móvil)</h2>
+    <div id="status">Cargando librerías de IA...</div>
+    <button type="button" id="start-btn" onclick="init()" disabled>Iniciar Cámara</button>
+    
+    <!-- Elemento de video oculto que captura la cámara correctamente en móviles -->
+    <video id="video" autoplay playsinline muted style="display:none; width:300px; height:300px;"></video>
+    <canvas id="canvas"></canvas>
     <div id="label-container"></div>
 </div>
 
-<!-- Librerías de TensorFlow.js y Teachable Machine Pose actualizadas y compatibles -->
+<!-- Scripts estables y compatibles con arquitecturas móviles -->
 <script src="https://jsdelivr.net"></script>
 <script src="https://jsdelivr.net"></script>
 
 <script type="text/javascript">
-    const URL = "https://teachablemachine.withgoogle.com/models/WOCXLX73G/";
-    let model, webcam, ctx, labelContainer, maxPredictions;
+    const URL = "https://withgoogle.com";
+    let model, ctx, labelContainer, maxPredictions;
     let isRunning = false;
+    const size = 300;
+
+    const statusDiv = document.getElementById("status");
+    const startBtn = document.getElementById("start-btn");
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+
+    // Habilita el botón solo cuando el entorno inicial básico está listo
+    window.onload = () => {
+        statusDiv.innerText = "Librerías listas. Presiona Iniciar.";
+        startBtn.disabled = false;
+    };
 
     async function init() {
-        if (isRunning) return; // Evita inicializar el modelo múltiples veces
-        isRunning = true;
+        if (isRunning) return;
+        startBtn.disabled = true;
+        statusDiv.innerText = "Cargando modelo de IA (Piedra/Papel/Tijera)...";
 
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
+        try {
+            // 1. Cargar el modelo de IA
+            model = await tmPose.load(URL + "model.json", URL + "metadata.json");
+            maxPredictions = model.getTotalClasses();
 
-        // Carga el modelo y sus metadatos
-        model = await tmPose.load(modelURL, metadataURL);
-        maxPredictions = model.getTotalClasses();
+            statusDiv.innerText = "Solicitando acceso a la cámara frontal...";
 
-        // Configuración de la cámara web
-        const size = 300; // Tamaño de la ventana de video
-        const flip = true; 
-        webcam = new tmPose.Webcam(size, size, flip); 
-        
-        await webcam.setup(); // Solicita permisos de acceso a la cámara
-        await webcam.play();
-        window.requestAnimationFrame(loop);
+            // 2. Configurar cámara nativa compatible con Chrome Android y Safari iOS
+            const constraints = {
+                video: {
+                    width: { ideal: size },
+                    height: { ideal: size },
+                    facingMode: "user" // Fuerza de forma estricta la cámara delantera (autofoto)
+                },
+                audio: false
+            };
 
-        // Configuración del lienzo (Canvas)
-        const canvas = document.getElementById("canvas");
-        canvas.width = size; 
-        canvas.height = size;
-        ctx = canvas.getContext("2d");
-        
-        // Configuración del contenedor de texto
-        labelContainer = document.getElementById("label-container");
-        labelContainer.innerHTML = ""; // Limpia mensajes previos
-        for (let i = 0; i < maxPredictions; i++) { 
-            labelContainer.appendChild(document.createElement("div"));
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            video.srcObject = stream;
+
+            // Esperar a que el video móvil tenga datos reales antes de activar el bucle
+            video.addEventListener('loadeddata', () => {
+                canvas.width = size;
+                canvas.height = size;
+                ctx = canvas.getContext("2d");
+                
+                // Preparar el contenedor de texto
+                labelContainer = document.getElementById("label-container");
+                labelContainer.innerHTML = "";
+                for (let i = 0; i < maxPredictions; i++) {
+                    labelContainer.appendChild(document.createElement("div"));
+                }
+
+                canvas.style.display = "inline-block";
+                statusDiv.innerText = "¡Ejecutando detector con éxito!";
+                isRunning = true;
+                window.requestAnimationFrame(loop);
+            });
+
+        } catch (error) {
+            statusDiv.style.color = "red";
+            statusDiv.innerText = "Error crítico: " + error.message;
+            console.error(error);
         }
     }
 
-    async function loop(timestamp) {
-        webcam.update(); // Actualiza el fotograma de la cámara
+    async function loop() {
+        if (!isRunning) return;
+
+        // Dibujar el fotograma del video en el lienzo aplicando efecto espejo
+        ctx.save();
+        ctx.translate(size, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, size, size);
+        ctx.restore();
+
+        // Procesar la imagen que está en el lienzo
         await predict();
         window.requestAnimationFrame(loop);
     }
 
     async function predict() {
-        // Ejecuta la imagen de la cámara a través de PoseNet
-        const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
-        // Clasifica la pose obtenida con el modelo de Teachable Machine
+        // Ejecutar predicción directamente sobre el Canvas procesado
+        const { pose, posenetOutput } = await model.estimatePose(canvas);
         const prediction = await model.predict(posenetOutput);
 
+        // Mostrar porcentajes actualizados
         for (let i = 0; i < maxPredictions; i++) {
-            const classPrediction =
-                prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(0) + "%";
+            const classPrediction = prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(0) + "%";
             labelContainer.childNodes[i].innerHTML = classPrediction;
         }
 
-        drawPose(pose);
-    }
-
-    function drawPose(pose) {
-        if (webcam.canvas) {
-            ctx.drawImage(webcam.canvas, 0, 0);
-            // Dibuja los puntos del cuerpo y el esqueleto en pantalla
-            if (pose) {
-                const minPartConfidence = 0.5;
-                tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
-                tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
-            }
+        // Dibujar los puntos clave encima de la mano
+        if (pose) {
+            const minPartConfidence = 0.5;
+            tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
+            tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
         }
     }
 </script>
