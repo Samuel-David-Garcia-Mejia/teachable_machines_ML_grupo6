@@ -10,6 +10,23 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
 
     <style>
+        #header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        #logo {
+            width: 180px;
+            margin-bottom: 10px;
+        }
+
+        #header h2 {
+            margin: 0;
+            color: #222;
+        }
+        
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f4f4;
@@ -51,6 +68,15 @@
 </head>
 
 <body>
+    <div id="header">
+        <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/6/66/LOGO_EN_NEGRO_MAMB.png" 
+            alt="Logo MAMB"
+            id="logo"
+        >
+
+        <h2>Museo de Arte Moderno de Barranquilla</h2>
+    </div>
 
     <h1>Piedra, Papel o Tijeras</h1>
 
@@ -157,4 +183,5 @@ document.getElementById("resultado").innerHTML = resultadosHTML;
     </script>
 
 </body>
+<footer>Presentado por: Samuel David Garcia Mejia</footer>
 </html>
