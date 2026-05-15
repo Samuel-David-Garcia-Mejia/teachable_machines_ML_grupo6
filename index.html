@@ -111,22 +111,21 @@
             // Predicción
             const prediction = await model.predict(posenetOutput);
 
-            let mejorClase = "";
-            let mayorProbabilidad = 0;
+            let resultadosHTML = "";
 
-            // Buscar clase con mayor probabilidad
+            // Mostrar todas las clases y porcentajes
             for (let i = 0; i < maxPredictions; i++) {
 
-                if (prediction[i].probability > mayorProbabilidad) {
-                    mayorProbabilidad = prediction[i].probability;
-                    mejorClase = prediction[i].className;
-                }
+                const nombre = prediction[i].className;
+                const porcentaje = (prediction[i].probability * 100).toFixed(1);
+
+                resultadosHTML += `
+                    <p>${nombre}: ${porcentaje}%</p>
+                `;
             }
 
-            // Mostrar resultado
-            document.getElementById("resultado").innerHTML =
-                "Predicción: " + mejorClase +
-                " (" + (mayorProbabilidad * 100).toFixed(1) + "%)";
+// Mostrar resultados en pantalla
+document.getElementById("resultado").innerHTML = resultadosHTML;
 
             // Dibujar cámara y esqueleto
             drawPose(pose);
